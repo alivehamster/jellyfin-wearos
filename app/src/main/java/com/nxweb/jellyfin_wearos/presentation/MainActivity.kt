@@ -136,9 +136,9 @@ fun Libraries(jellyfin: Jellyfin, player: MediaPlayer, navController: NavHostCon
                     onClick = {
                         coroutineScope.launch {
                             try {
+                                isLoading = true
                                 val songs = jellyfin.getItems(items[index].id)
                                 player.setShuffleQueue(songs.content.items, jellyfin, 0)
-                                isLoading = true
                                 navController.navigate("PlayerScreen")
                             } catch (e: Exception) {
                                 // Handle error
@@ -357,10 +357,4 @@ fun PlayerScreen(player: MediaPlayer) {
 fun DefaultPreview() {
     JellyfinwearosTheme {
     }
-}
-
-fun test(x1: String, x2: String, x3:String) {
-    print(x1)
-    print(x2)
-    print(x3)
 }
