@@ -137,7 +137,7 @@ fun Libraries(jellyfin: Jellyfin, player: MediaPlayer, navController: NavHostCon
                         coroutineScope.launch {
                             try {
                                 val songs = jellyfin.getItems(items[index].id)
-                                player.setQueue(songs.content.items, jellyfin, 0)
+                                player.setShuffleQueue(songs.content.items, jellyfin, 0)
                                 isLoading = true
                                 navController.navigate("PlayerScreen")
                             } catch (e: Exception) {

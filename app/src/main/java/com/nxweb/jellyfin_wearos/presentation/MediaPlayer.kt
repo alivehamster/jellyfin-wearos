@@ -50,6 +50,11 @@ class MediaPlayer(context: Context) {
         exoPlayer.play()
     }
 
+    fun setShuffleQueue(songs: List<BaseItemDto>, jellyfin: Jellyfin, startIndex: Int = 0) {
+        val shuffled = songs.shuffled()
+        setQueue(shuffled, jellyfin, startIndex)
+    }
+
     fun playQueue() {
         exoPlayer.play()
     }
