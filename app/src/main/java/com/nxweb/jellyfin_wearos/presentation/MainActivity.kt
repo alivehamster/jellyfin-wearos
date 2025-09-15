@@ -10,7 +10,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,7 +33,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.navigation.NavHostController
 import androidx.wear.compose.foundation.lazy.AutoCenteringParams
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -91,7 +95,10 @@ fun WearApp(jellyfin: Jellyfin, player: MediaPlayer) {
                 }
             }
             composable("Libraries") {
-                Libraries(jellyfin, player)
+                Libraries(jellyfin, player, navController)
+            }
+            composable("PlayerScreen"){
+                PlayerScreen(player)
             }
         }
 
@@ -99,7 +106,7 @@ fun WearApp(jellyfin: Jellyfin, player: MediaPlayer) {
 }
 
 @Composable
-fun Libraries(jellyfin: Jellyfin, player: MediaPlayer) {
+fun Libraries(jellyfin: Jellyfin, player: MediaPlayer, navController: NavHostController) {
     val scalingLazyListState = rememberScalingLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<BaseItemDto>>(emptyList()) }
@@ -131,6 +138,8 @@ fun Libraries(jellyfin: Jellyfin, player: MediaPlayer) {
                             try {
                                 val songs = jellyfin.getItems(items[index].id)
                                 player.setQueue(songs.content.items, jellyfin, 0)
+                                isLoading = true
+                                navController.navigate("PlayerScreen")
                             } catch (e: Exception) {
                                 // Handle error
                             }
@@ -235,11 +244,118 @@ fun Login(onLogin: (String, String, String) -> Unit) {
     }
 }
 
+@Composable
+fun PlayerScreen(player: MediaPlayer) {
+    var currentSong by remember { mutableStateOf(player.getCurrentSong()) }
+    var isPlaying by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+            }
+
+            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+                currentSong = player.getCurrentSong()
+            }
+        }
+        player.exoPlayer.addListener(listener)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colors.background),
+        contentAlignment = Alignment.Center
+    ) {
+        ScalingLazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = rememberScalingLazyListState(),
+            autoCentering = AutoCenteringParams(itemIndex = 1)
+        ) {
+            item {
+                Text(
+                    text = currentSong?.name ?: "No Song",
+                    style = MaterialTheme.typography.title3,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    maxLines = 2
+                )
+            }
+
+            item {
+                Text(
+                    text = currentSong?.albumArtist ?: "Unknown Artist",
+                    style = MaterialTheme.typography.body2,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                )
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        if (isPlaying) {
+                            player.pause()
+                        } else {
+                            player.playQueue()
+                        }
+                    },
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth()
+                ) {
+                    Text(if (isPlaying) "Pause" else "Play")
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = { player.previous() },
+                        modifier = Modifier.weight(1f).padding(4.dp)
+                    ) {
+                        Text("Previous")
+                    }
+
+                    Button(
+                        onClick = { player.next() },
+                        modifier = Modifier.weight(1f).padding(4.dp)
+                    ) {
+                        Text("Next")
+                    }
+                }
+            }
+
+            item {
+                Button(
+                    onClick = { player.stop() },
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth(),
+                    colors = androidx.wear.compose.material.ButtonDefaults.buttonColors(
+                        backgroundColor = MaterialTheme.colors.error
+                    )
+                ) {
+                    Text("Stop")
+                }
+            }
+        }
+    }
+}
+
 @Preview(device = WearDevices.LARGE_ROUND, showSystemUi = true)
 @Composable
 fun DefaultPreview() {
     JellyfinwearosTheme {
-        Login(::test)
     }
 }
 

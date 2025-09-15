@@ -17,8 +17,12 @@ class MediaPlayer(context: Context) {
     init {
         exoPlayer.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                    currentIndex++
+                currentIndex = exoPlayer.currentMediaItemIndex
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    currentIndex = 0
                 }
             }
         })
@@ -41,7 +45,9 @@ class MediaPlayer(context: Context) {
         }
 
         exoPlayer.setMediaItems(mediaItems, startIndex, 0)
+        exoPlayer.repeatMode = Player.REPEAT_MODE_ALL
         exoPlayer.prepare()
+        exoPlayer.play()
     }
 
     fun playQueue() {
@@ -51,14 +57,12 @@ class MediaPlayer(context: Context) {
     fun next() {
         if (exoPlayer.hasNextMediaItem()) {
             exoPlayer.seekToNextMediaItem()
-            currentIndex++
         }
     }
 
     fun previous() {
         if (exoPlayer.hasPreviousMediaItem()) {
             exoPlayer.seekToPreviousMediaItem()
-            currentIndex--
         }
     }
 
