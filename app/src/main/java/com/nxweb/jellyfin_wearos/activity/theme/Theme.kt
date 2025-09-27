@@ -1,4 +1,4 @@
-package com.nxweb.jellyfin_wearos.presentation.theme
+package com.nxweb.jellyfin_wearos.activity.theme
 
 import androidx.compose.runtime.Composable
 import androidx.wear.compose.material.MaterialTheme

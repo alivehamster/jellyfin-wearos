@@ -57,6 +57,8 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.material3)
     implementation(libs.foundation.layout)
+    implementation(libs.lifecycle.service)
+    implementation(libs.wear.ongoing)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
     debugImplementation(libs.ui.tooling)

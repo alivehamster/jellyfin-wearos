@@ -1,4 +1,4 @@
-package com.nxweb.jellyfin_wearos.presentation
+package com.nxweb.jellyfin_wearos.activity
 
 import com.nxweb.jellyfin_wearos.R
 import android.content.Context
@@ -8,13 +8,10 @@ import org.jellyfin.sdk.api.client.extensions.userApi
 import org.jellyfin.sdk.createJellyfin
 import org.jellyfin.sdk.model.ClientInfo
 import androidx.core.content.edit
-import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.Response
-import org.jellyfin.sdk.api.client.extensions.audioApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.userViewsApi
 import org.jellyfin.sdk.model.UUID

@@ -1,11 +1,10 @@
-/* While this template provides a good starting point for using Wear Compose, you can always
- * take a look at https://github.com/android/wear-os-samples/tree/main/ComposeStarter to find the
- * most up to date changes to the libraries and their usages.
- */
+package com.nxweb.jellyfin_wearos.activity
 
-package com.nxweb.jellyfin_wearos.presentation
-
+import android.content.ComponentName
+import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -27,14 +26,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavHostController
 import androidx.wear.compose.foundation.lazy.AutoCenteringParams
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -42,51 +39,82 @@ import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
-import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import androidx.wear.tooling.preview.devices.WearDevices
-import com.nxweb.jellyfin_wearos.R
-import com.nxweb.jellyfin_wearos.presentation.theme.JellyfinwearosTheme
+import com.nxweb.jellyfin_wearos.activity.theme.JellyfinwearosTheme
+import com.nxweb.jellyfin_wearos.service.MediaService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemDto
 
 class MainActivity : ComponentActivity() {
-    lateinit var player: MediaPlayer
+    private val _mediaService = mutableStateOf<MediaService?>(null)
+    private val _bound = mutableStateOf(false)
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as MediaService.LocalBinder
+            _mediaService.value = binder.getService()
+            _bound.value = true
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            _bound.value = false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
-
         super.onCreate(savedInstanceState)
-
         setTheme(android.R.style.Theme_DeviceDefault)
-
         val jellyfin = Jellyfin(this)
-        player = MediaPlayer(this)
 
         setContent {
-            WearApp(jellyfin, player)
+            val mediaServiceState by _mediaService
+            val boundState by _bound
+
+            WearApp(jellyfin, mediaServiceState, boundState)
         }
     }
-    override fun onDestroy() {
-        super.onDestroy()
-        player.release()
+
+    override fun onStart() {
+        super.onStart()
+        Intent(this, MediaService::class.java).also { intent ->
+            bindService(intent, connection, BIND_AUTO_CREATE)
+        }
     }
+
+    override fun onStop() {
+        super.onStop()
+        unbindService(connection)
+        _bound.value = false
+    }
+
 }
 
 @Composable
-fun WearApp(jellyfin: Jellyfin, player: MediaPlayer) {
+fun WearApp(jellyfin: Jellyfin, mediaService: MediaService?, bound: Boolean) {
     JellyfinwearosTheme {
         val navController = rememberSwipeDismissableNavController()
         val isLoggedIn = jellyfin.checkCredentials()
-        val startDestination = if (isLoggedIn) "Libraries" else "login"
+
+        var startDestination = if (isLoggedIn) "Libraries" else "login"
+
+        if(!bound && startDestination == "Libraries"){
+            startDestination="loading"
+        } else if(bound && mediaService?.getCurrentSong() != null){
+            startDestination="PlayerScreen"
+        }
 
         SwipeDismissableNavHost(
             navController = navController,
             startDestination = startDestination
         ) {
+            composable("loading") {
+                Loading()
+            }
             composable("login") {
                 Login{ hostname, username, password ->
                     jellyfin.saveCredentials(hostname, username, password)
@@ -95,10 +123,10 @@ fun WearApp(jellyfin: Jellyfin, player: MediaPlayer) {
                 }
             }
             composable("Libraries") {
-                Libraries(jellyfin, player, navController)
+                Libraries(jellyfin, navController, mediaService)
             }
             composable("PlayerScreen"){
-                PlayerScreen(player)
+                if(mediaService != null) PlayerScreen(mediaService)
             }
         }
 
@@ -106,7 +134,11 @@ fun WearApp(jellyfin: Jellyfin, player: MediaPlayer) {
 }
 
 @Composable
-fun Libraries(jellyfin: Jellyfin, player: MediaPlayer, navController: NavHostController) {
+fun Libraries(
+    jellyfin: Jellyfin,
+    navController: NavHostController,
+    mediaService: MediaService?,
+) {
     val scalingLazyListState = rememberScalingLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<BaseItemDto>>(emptyList()) }
@@ -138,8 +170,14 @@ fun Libraries(jellyfin: Jellyfin, player: MediaPlayer, navController: NavHostCon
                             try {
                                 isLoading = true
                                 val songs = jellyfin.getItems(items[index].id)
-                                player.setShuffleQueue(songs.content.items, jellyfin, 0)
-                                navController.navigate("PlayerScreen")
+
+                                if (mediaService != null) {
+                                    mediaService.setShuffleQueue(songs.content.items, jellyfin, 0)
+                                    navController.navigate("PlayerScreen")
+                                } else {
+                                    isLoading = false
+                                }
+
                             } catch (e: Exception) {
                                 // Handle error
                             }
@@ -245,7 +283,7 @@ fun Login(onLogin: (String, String, String) -> Unit) {
 }
 
 @Composable
-fun PlayerScreen(player: MediaPlayer) {
+fun PlayerScreen(player: MediaService) {
     var currentSong by remember { mutableStateOf(player.getCurrentSong()) }
     var isPlaying by remember { mutableStateOf(false) }
 
