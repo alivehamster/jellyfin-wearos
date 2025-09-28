@@ -194,6 +194,29 @@ fun Libraries(
                     )
                 }
             }
+
+            item {
+                Button(
+                    onClick = {
+                        jellyfin.logout()
+                        mediaService?.stop()
+                        navController.navigate("login")
+
+                    },
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .fillMaxWidth(),
+                    colors = androidx.wear.compose.material.ButtonDefaults.buttonColors(
+                        backgroundColor = Color.Red
+                    )
+                ) {
+                    Text(
+                        text = "Logout",
+                        style = MaterialTheme.typography.body2,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
         }
     }
 }

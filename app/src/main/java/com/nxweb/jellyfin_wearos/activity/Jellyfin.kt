@@ -54,6 +54,15 @@ class Jellyfin(androidcontext: Context) {
         }
     }
 
+    fun logout() {
+        sharedPref.edit {
+            putString("api_key", null)
+            putString("user_id", null)
+            putString("hostname", null)
+            putString("username", null)
+            putString("password", null)
+        }
+    }
     fun login(username: String, password: String) {
         CoroutineScope(Dispatchers.IO).launch {
             val authenticationResult by api.userApi.authenticateUserByName(
