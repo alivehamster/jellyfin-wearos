@@ -126,7 +126,7 @@ fun WearApp(jellyfin: Jellyfin, mediaService: MediaService?, bound: Boolean) {
                 Libraries(jellyfin, navController, mediaService)
             }
             composable("PlayerScreen"){
-                if(mediaService != null) PlayerScreen(mediaService)
+                if(mediaService != null) PlayerScreen(mediaService, navController)
             }
         }
 
@@ -174,6 +174,7 @@ fun Libraries(
                                 if (mediaService != null) {
                                     mediaService.setShuffleQueue(songs.content.items, jellyfin, 0)
                                     navController.navigate("PlayerScreen")
+                                    isLoading = false
                                 } else {
                                     isLoading = false
                                 }
@@ -306,9 +307,9 @@ fun Login(onLogin: (String, String, String) -> Unit) {
 }
 
 @Composable
-fun PlayerScreen(player: MediaService) {
+fun PlayerScreen(player: MediaService, navController: NavHostController,) {
     var currentSong by remember { mutableStateOf(player.getCurrentSong()) }
-    var isPlaying by remember { mutableStateOf(false) }
+    var isPlaying by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         val listener = object : Player.Listener {
@@ -398,7 +399,10 @@ fun PlayerScreen(player: MediaService) {
 
             item {
                 Button(
-                    onClick = { player.stop() },
+                    onClick = {
+                        player.stop()
+                        navController.navigate("Libraries")
+                              },
                     modifier = Modifier
                         .padding(8.dp)
                         .fillMaxWidth(),
